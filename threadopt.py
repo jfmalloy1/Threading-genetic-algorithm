@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import random
 import csv
@@ -15,6 +16,8 @@ CHIP = int(sys.argv[3])
 CXPB = float(sys.argv[4])
 #mutation probability
 MUTPB = float(sys.argv[5])
+#Run number
+#RUN = int(sys.argv[6])
 
 #Read in adj matrix and CPU cost
 adj = []
@@ -26,20 +29,15 @@ with open("adj_matrix.txt") as a:
 adj = np.array(adj)
 adj = adj.astype(np.float)
 
-#Read in CPU costs as a dictionary
-with open("CPU_cost.txt") as c:
-    next(c)
-    for line in c:
-        (key, val) = line.split()
-        cost[int(key)] = float(val)
-
 #open a csv output file
-c = open("output3/output" + str(GEN) + "_" + str(POPULATION) + "_" + str(CHIP) + "_" + str(CXPB) + "_" + str(MUTPB) + ".csv", "w")
+c = open("output" + str(GEN) + "_" + str(POPULATION) + "_" + str(CHIP) + "_" + str(CXPB) + "_" + str(MUTPB) + ".csv", "w")
 fieldnames = ["Gen", "Min", "Max", "Mean"]
 writer = csv.DictWriter(c, fieldnames = fieldnames)
 writer.writeheader()
 
-print adj
+#open min values output file
+c2 = open("minvalues" + str(GEN) + "_" + str(POPULATION) + "_" + str(CHIP) + "_" + str(CXPB) + "_" + str(MUTPB) + ".csv", "a")
+
 #Calculate the weight it takes to travel from n1 to n2
 def weight(n1, n2):
     #use adj to calculate weight
@@ -145,7 +143,7 @@ def run():
 
     toolbox = base.Toolbox()
 
-    #Individual - randomly ordered array of 1-64
+    #Individual - randomly ordered array of 1-chip size (determined by sys args)
     toolbox.register("setup", random.sample, xrange(1,(CHIP**2 + 1)), CHIP**2)
     toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.setup, 1)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
@@ -157,7 +155,6 @@ def run():
     #crossover and mutate
     toolbox.register("mutate", mutate)
     toolbox.register("crossover", cross)
-    toolbox.register("cross", tools.cxPartialyMatched)
 
     #population size
     pop = toolbox.population(n=POPULATION)
@@ -204,12 +201,25 @@ def run():
         sum2 = sum(x*x for x in fits)
         std = abs(sum2/length - mean**2)**0.5
 
+
         print(" Min %s" % '{:0.3e}'.format(min(fits)))
         print(" Max %s" % '{:0.3e}'.format(max(fits)))
         print(" Avg %s" % '{:0.3e}'.format(mean))
         print(" Std %s" % '{:0.3e}'.format(std))
 
         writer.writerow({"Gen": g, "Min": min(fits), "Max": max(fits), "Mean": mean})
+
+        #find the min value, print it to an output file
+        fmin = min(fits)
+        min_pos = [i for i,x in enumerate(fits) if x == fmin]
+        #choose one of the minimum fitness values (seems to be the same mapping)
+        c = random.choice(min_pos)
+
+        #output each min mapping along with fitness
+        for n in pop[c][0]:
+            print(str(n), end=' ', file=c2)
+        print('',file=c2)
+        print(str(min(fits)), file=c2)
 
 def main():
     run()
